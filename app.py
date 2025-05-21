@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 import os
-from PDF_Generator import create_combined_pdf
+from PDF_Generator2 import create_combined_pdf
 import tempfile
 
 app = Flask(__name__)
