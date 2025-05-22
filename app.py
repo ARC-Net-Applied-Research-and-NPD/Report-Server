@@ -1,38 +1,67 @@
 from flask import Flask, request, jsonify, send_file
 import os
-from PDF_Generator2 import create_combined_pdf
+from PDF_Generator_final import create_combined_pdf
 import tempfile
+import json
 
 app = Flask(__name__)
+
+# Ensure reports directory exists
+REPORTS_DIR = os.path.join(app.root_path, "reports")
+os.makedirs(REPORTS_DIR, exist_ok=True)
 
 @app.route("/create_report", methods=["POST"])
 def create_report():
     try:
-        if 'output' not in request.files or 'quality' not in request.files:
-            return jsonify({"error": "File Not Found"}), 404
-        
-        output_json_file = request.files['output']
-        quality_json_file = request.files['quality']
+        # Expect JSON data instead of files
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
-            temp_file_path = temp_file.name
-            output_json_file.save(temp_file_path)
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file_2:
-            temp_file_2_path = temp_file_2.name
-            quality_json_file.save(temp_file_2_path)
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf_file:
-            output_pdf_path = temp_pdf_file.name
-            create_combined_pdf(temp_file_path, temp_file_2_path, output_pdf_path)
-        
-        os.remove(temp_file_path)
-        os.remove(temp_file_2_path)
-        
-        return send_file(output_pdf_path, as_attachment=True, mimetype="application/pdf")
-    
+        # Extract variables from JSON
+        transcript = data.get("transcript")
+        audio = data.get("audio")
+        video = data.get("video")
+        score = data.get("score")
+        qualitative = data.get("qualitative")
+        presentation_mode = data.get("presentation_mode")
+        user_name = data.get("user_name")
+        LLM = data.get("LLM")
+
+        if not all([transcript, audio, video, score, qualitative, user_name, LLM]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # Create user-specific reports directory
+        user_reports_dir = os.path.join(REPORTS_DIR, user_name)
+        os.makedirs(user_reports_dir, exist_ok=True)
+
+        # Save JSON data to files
+        output_data = json.loads(video)
+        output_data.update({"LLM": json.loads(LLM), "User Name": user_name})
+        output_json_path = os.path.join("json", f"{user_name}_output.json")
+        quality_json_path = os.path.join("json", f"{user_name}_quality.json")
+        scores_json_path = os.path.join("json", f"{user_name}_scores.json")
+        presentation_json_path = os.path.join("json", f"{user_name}_presentation.json")
+
+        os.makedirs("json", exist_ok=True)
+        with open(output_json_path, "w") as f:
+            json.dump(output_data, f, indent=4)
+        with open(quality_json_path, "w") as f:
+            json.dump(json.loads(qualitative), f, indent=4)
+        with open(scores_json_path, "w") as f:
+            json.dump(json.loads(score), f, indent=4)
+        with open(presentation_json_path, "w") as f:
+            json.dump({"presentation_mode": presentation_mode}, f, indent=4)
+
+        # Generate PDF
+        output_pdf_path = os.path.join(user_reports_dir, "combined_report.pdf")
+        create_combined_pdf("logos/logo.png", output_json_path, output_pdf_path)
+
+        # Send the PDF file
+        return send_file(output_pdf_path, as_attachment=True, download_name="combined_report.pdf", mimetype="application/pdf")
+
     except Exception as e:
-        return jsonify({"error": f"{e}"}), 500
+        return jsonify({"error": f"Failed to create report: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(port = '8004',host = '0.0.0.0', debug=False)
+    app.run(port=8004, host="0.0.0.0", debug=False)

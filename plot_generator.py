@@ -1,20 +1,30 @@
 import matplotlib.pyplot as plt 
-import json   # Assume a 5-point scale
+import json 
+import matplotlib# Assume a 5-point scale
 import matplotlib.pyplot as plt
 import numpy as np
 
+matplotlib.use('Agg')  # Non-interactive backend
 
 
 def generate_radar_chart(output_path='radar_chart.png'):
     values = []
     labels = []
-    with open(r'json/output.json' , 'r') as fp:
+    with open(r'json/scores.json' , 'r') as fp:
         data = json.load(fp)
     items = list(data.items()) 
-    for i in range(4 , 8):
-        values.append(items[i][1])
-        labels.append(items[i][0])
-    
+    print("Items: ", items)
+    print(items[-1][1])
+    values.append(items[-1][1])
+    labels.append(items[-1][0])
+    values.append(items[-2][1])
+    labels.append(items[-2][0])
+    values.append(items[-3][1])
+    labels.append(items[-3][0])
+    values.append(items[-4][1])
+    labels.append(items[-4][0])
+    print("Values: ", values)
+    print("Labels: ", labels)
     plt.plot(labels, values, marker="s")
     plt.grid(axis='x', which='both', linestyle='-', linewidth=1.5, color='gray', alpha=0.6)
     plt.tight_layout()
@@ -30,4 +40,4 @@ def generate_radar_chart(output_path='radar_chart.png'):
 
 
 
-generate_radar_chart("output.png")
+# generate_radar_chart("output.png")
